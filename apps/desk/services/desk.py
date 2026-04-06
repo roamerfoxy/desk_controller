@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from datetime import datetime
 import os
 from apps.desk.core.config import settings
 from apps.desk.drivers.desk_driver import DeskDriver
@@ -106,6 +107,7 @@ class DeskService:
     def set_height(self, height: int):
         """Sets the target height of the desk and starts moving asynchronously."""
         logger.info(f"Setting desk height to {height}mm")
+        self.state.last_move_time = datetime.now()
 
         # Cancel existing task if it exists
         if self.current_task and not self.current_task.done():

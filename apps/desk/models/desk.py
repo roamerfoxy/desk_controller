@@ -1,5 +1,6 @@
 """This module defines the data models for the desk application."""
 
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
 from apps.desk.core.config import settings
@@ -13,6 +14,7 @@ class DeskState(BaseModel):
     target_height: int = Field(..., gt=settings.min_height, lt=settings.max_height)
     is_moving: bool = False
     active_preset: Optional[str] = None
+    last_move_time: Optional[datetime] = None
 
 
 class HeightUpdateRequest(BaseModel):
