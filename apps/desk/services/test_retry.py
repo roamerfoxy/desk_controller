@@ -38,11 +38,11 @@ async def test_retry_success():
     original_async = service._async_set_height
     service._async_set_height = AsyncMock(side_effect=[False, True])
     
-    service.set_height(1300)
-    await asyncio.sleep(0.5) # Allow task to run
+    success = await service.set_height(1300)
     
     assert service._async_set_height.call_count == 2
-    print("SUCCESS: set_height retried after failure.")
+    assert success is True
+    print("SUCCESS: set_height retried and returned True.")
 
 async def test_stationary_detection():
     print("\n--- Testing Stationary Detection ---")

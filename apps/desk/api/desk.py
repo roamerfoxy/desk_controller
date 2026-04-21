@@ -32,9 +32,9 @@ async def update_desk_height(
     height_update: HeightUpdateRequest,
     desk_service: DeskService = Depends(get_desk_service),
 ):
-    """Updates the target height of the desk."""
-    desk_service.set_height(height_update.height)
-    return HeightUpdateResponse(success=True, height=desk_service.state.current_height)
+    """Updates the target height of the desk and waits for completion."""
+    success = await desk_service.set_height(height_update.height)
+    return HeightUpdateResponse(success=success, height=desk_service.state.current_height)
 
 
 @router.put("/preset", response_model=PresetApplyResponse)
@@ -42,8 +42,8 @@ async def apply_preset(
     preset_apply: PresetApplyRequest,
     desk_service: DeskService = Depends(get_desk_service),
 ):
-    """Applies a preset to the desk."""
+    """Applies a preset to the desk and waits for completion."""
     if preset_apply.name not in desk_service.presets.root:
         raise HTTPException(status_code=404, detail="Preset not found")
-    desk_service.set_preset(preset_apply.name)
-    return PresetApplyResponse(success=True, height=desk_service.state.current_height)
+    success = await desk_service.set_preset(preset_apply.name)
+    return PresetApplyResponse(success=success, height=desk_service.state.current_height)

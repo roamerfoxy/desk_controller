@@ -4,6 +4,7 @@ import asyncio
 import json
 from datetime import datetime
 import os
+from typing import Optional
 from apps.desk.core.config import settings
 from apps.desk.drivers.desk_driver import DeskDriver
 from apps.desk.models.desk import DeskState
@@ -104,8 +105,8 @@ class DeskService:
         """Returns the current height of the desk."""
         return self.state.current_height
 
-    def set_height(self, height: int):
-        """Sets the target height of the desk and starts moving asynchronously."""
+    async def set_height(self, height: int) -> bool:
+        """Sets the target height of the desk and waits for completion."""
         logger.info(f"Setting desk height to {height}mm")
         self.state.last_move_time = datetime.now()
 
@@ -113,8 +114,12 @@ class DeskService:
         if self.current_task and not self.current_task.done():
             logger.info("Canceling existing movement task")
             self.current_task.cancel()
+            try:
+                await self.current_task
+            except asyncio.CancelledError:
+                logger.info("Previous movement task canceled")
 
-        async def move_with_retry():
+        async def move_with_retry() -> bool:
             success = await self._async_set_height(height)
             if not success:
                 logger.info(f"Initial attempt to set height to {height}mm failed. Retrying...")
@@ -125,8 +130,9 @@ class DeskService:
                     logger.warning(f"Retry failed to reach target height {height}mm.")
             return success
 
-        self.current_task = asyncio.create_task(move_with_retry())
         self.state.target_height = height
+        self.current_task = asyncio.create_task(move_with_retry())
+        return await self.current_task
 
     async def _async_set_height(self, height: int) -> bool:
         try:
@@ -176,12 +182,12 @@ class DeskService:
             await self.driver.stop()
             await self.driver.disconnect()
 
-    def set_preset(self, preset_name: str):
+    async def set_preset(self, preset_name: str) -> bool:
         """Moves the desk to a preset height."""
-        if preset_name in self.presets.root:
-            height = self.presets.root[preset_name].height
-            logger.info(f"Applying preset '{preset_name}' with height {height}mm")
-            self.set_height(height)
-            self.state.active_preset = preset_name
-        else:
-            logger.warning(f"Preset '{preset_name}' not found")
+        if preset_name not in self.presets.root:
+            raise ValueError("Preset not found")
+
+        height = self.presets.root[preset_name].height
+        logger.info(f"Applying preset '{preset_name}' with height {height}mm")
+        self.state.active_preset = preset_name
+        return await self.set_height(height)
